@@ -7,11 +7,11 @@ import matplotlib.pyplot as plt
 
 from IPython.display import HTML
 
-parser = argparse.ArgumentParser(description='2D Ising Model Simulation')
-parser.add_argument('-L', '--latticeSize', help='Size of the lattice (LxL)', type=int, default=10)
+parser = argparse.ArgumentParser(description='Ising Model Simulation')
+parser.add_argument('-L', '--latticeSize', help='Size of the lattice (LxL)', type=int, default=50)
 parser.add_argument('-J', '--interactionStrength', help='Interaction strength (J)', type=float, default=1.0)
 parser.add_argument('-Be', '--beta', help='Inverse temperature (beta)', type=float, default=0.5)
-parser.add_argument('-N', '--numSteps', help='Number of Monte Carlo steps', type=int, default=50)
+parser.add_argument('-N', '--numSteps', help='Number of Monte Carlo steps', type=int, default=100)
 parser.add_argument('-D', '--spinDensity', help='Initial spin density', type=float, default=0.5)
 parser.add_argument('-B', '--magneticField', help='Magnetic field (B)', type=float, default=0.0)
 
@@ -44,22 +44,19 @@ class IsingModel:
         lattice = np.random.choice([-1, 1], size=(self.L, self.L), p=[1 - self.spinDensity, self.spinDensity])
         return lattice
     
-    def calculateEnergy(self):
+    def calculateEnergy(self, i, j):
         energy = 0
-        for i in range(self.L):
-            for j in range(self.L):
-                dE = self.lattice[(i+1)%self.L, j] + self.lattice[i, (j+1)%self.L] + self.lattice[(i-1)%self.L, j] + self.lattice[i, (j-1)%self.L]
-                energy += -self.J  * dE * self.lattice[i,j] - self.B * self.lattice[i,j]
-        return energy / 2
+        dE = self.lattice[(i+1)%self.L, j] + self.lattice[i, (j+1)%self.L] + self.lattice[(i-1)%self.L, j] + self.lattice[i, (j-1)%self.L]
+        energy += -self.J  * dE * self.lattice[i,j] - self.B * self.lattice[i,j]
+        return energy
     
     def spinFlip(self, i, j):
-        dE = 2 * self.calculateEnergy()
+        dE = -2 * self.calculateEnergy(i, j)
+
         if dE < 0 or np.random.rand() < np.exp(-dE * self.beta):   
-            # print('↑' if self.lattice[i,j] == 1 else '↓', end=' ')
+            
             self.lattice[i, j] *= -1   
-            print('Flip accepted at ({},{})'.format(i,j))      
-            print('↑' if self.lattice[i,j] == 1 else '↓', end=' ')
-            print()
+
             self.M = self.lattice.sum()*1.0 / (self.L**2)
 
     def saveLattice(self,imgFile=None):
@@ -69,7 +66,7 @@ class IsingModel:
         for i in range(self.L):
             for j in range(self.L):
                 color = 'green' if self.lattice[i,j] == 1 else 'black'
-                draw.rectangle([i*100, j*100, (i+1)*100, (j+1)*100], fill=color)
+                draw.rectangle([i*1000/self.L, j*1000/self.L, (i+1)*1000/self.L, (j+1)*1000/self.L], fill=color)
         if imgFile:
             image.save(imgFile)
 
@@ -99,25 +96,25 @@ if simArgs.outputAnimation != None:
 if simArgs.outputImage != None:
     outputImageCheck = True
 
-for step in range(numSteps):
+for step in range(numSteps*(latticeSize**2)):
     i = np.random.randint(0, latticeSize)
     j = np.random.randint(0, latticeSize)
     isingSim.spinFlip(i, j)
     if outputFileCheck:
         outputFile.write(isingSim.M.__str__() + '\n')
     if outputImageCheck: 
-        if step % (numSteps//20) == 0:
+        if step % (latticeSize**2) == 0:
             if simArgs.outputImage[-3:] == 'png':
-                filename = simArgs.outputImage[:-4] + '_step_' + step.__str__() + '.png'
+                filename = simArgs.outputImage[:-4] + '_step_' + (step/latticeSize**2).__str__() + '.png'
             elif simArgs.outputImage[-3:] == 'jpg':
-                filename = simArgs.outputImage[:-4] + '_step_' + step.__str__() + '.png'
+                filename = simArgs.outputImage[:-4] + '_step_' + (step/latticeSize**2).__str__() + '.png'
             elif simArgs.outputImage[-4:] == 'jpeg':
-                filename = simArgs.outputImage[:-5] + '_step_' + step.__str__() + '.png'
+                filename = simArgs.outputImage[:-5] + '_step_' + (step/latticeSize**2).__str__() + '.png'
             else:
-                filename = simArgs.outputImage + '_step_' + step.__str__() + '.png'
+                filename = simArgs.outputImage + '_step_' + (step/latticeSize**2).__str__() + '.png'
             isingSim.saveLattice(imgFile=filename)
     if outputAnimationCheck:
-        if step % (numSteps//50) == 0:
+        if step % (latticeSize**2) == 0:
             frames.append(isingSim.lattice.copy())  
 
 if simArgs.outputAnimation != None:
