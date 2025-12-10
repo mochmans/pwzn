@@ -30,49 +30,6 @@ numSteps = simArgs.numSteps
 spinDensity = simArgs.spinDensity
 
 
-class IsingModel:
-    def __init__(self, L, J, beta, B, spinDensity):
-        self.L = L
-        self.J = J
-        self.beta = beta
-        self.B = B
-        self.spinDensity = spinDensity
-        self.lattice = self.initializeLattice()
-        self.M = self.lattice.sum()*1.0 / (self.L**2)
-
-    
-    def initializeLattice(self):
-        lattice = np.random.choice([-1, 1], size=(self.L, self.L), p=[1 - self.spinDensity, self.spinDensity])
-        return lattice
-    
-
-    def calculateEnergy(self, i, j):
-        energy = 0
-        dE = self.lattice[(i+1)%self.L, j] + self.lattice[i, (j+1)%self.L] + self.lattice[(i-1)%self.L, j] + self.lattice[i, (j-1)%self.L]
-        energy += -self.J  * dE * self.lattice[i,j] - self.B * self.lattice[i,j]
-        return energy
-        
-
-    def spinFlip(self, i, j):
-        dE = -2 * self.calculateEnergy(i, j)
-
-        if dE < 0 or np.random.rand() < np.exp(-dE * self.beta):   
-            
-            self.lattice[i, j] *= -1   
-
-            self.M = self.lattice.sum()*1.0 / (self.L**2)
-
-    def saveLattice(self,imgFile=None):
-        image = Image.new('RGB', (1000, 1000), 'pink')
-        draw = ImageDraw.Draw(image)
-        draw.rectangle([200, 200, 400, 400], outline='blue', width=5)
-        for i in range(self.L):
-            for j in range(self.L):
-                color = 'green' if self.lattice[i,j] == 1 else 'black'
-                draw.rectangle([i*1000/self.L, j*1000/self.L, (i+1)*1000/self.L, (j+1)*1000/self.L], fill=color)
-        if imgFile:
-            image.save(imgFile)
-
 
 
 
@@ -134,26 +91,25 @@ def saveLattice(latticeSize, lattice, imgFile=None):
 
 def isingSimulation(lattice, numSteps,latticeSize, beta):
     start = time.perf_counter()
-    for step in range(numSteps*(latticeSize**2)):
-        i = np.random.randint(0, latticeSize)
-        j = np.random.randint(0, latticeSize)
-        spinFlip(lattice, latticeSize, beta, i, j, M)
-        if step % (latticeSize**2) == 0:
-            frames.append(lattice.copy())  
+    for macrostep in range(numSteps):
+        for microStep in range(latticeSize**2):
+            i = np.random.randint(0, latticeSize)
+            j = np.random.randint(0, latticeSize)
+            spinFlip(lattice, latticeSize, beta, i, j, M) 
+        frames.append(lattice.copy())  
         if outputFileCheck:
             outputFile.write(M.__str__() + '\n')
     
         if outputImageCheck: 
-            if step % (latticeSize**2) == 0:
-                if simArgs.outputImage[-3:] == 'png':
-                    filename = simArgs.outputImage[:-4] + '_step_' + (step/latticeSize**2).__str__() + '.png'
-                elif simArgs.outputImage[-3:] == 'jpg':
-                    filename = simArgs.outputImage[:-4] + '_step_' + (step/latticeSize**2).__str__() + '.png'
-                elif simArgs.outputImage[-4:] == 'jpeg':
-                    filename = simArgs.outputImage[:-5] + '_step_' + (step/latticeSize**2).__str__() + '.png'
-                else:
-                    filename = simArgs.outputImage + '_step_' + (step/latticeSize**2).__str__() + '.png'
-                saveLattice(latticeSize, lattice, imgFile=filename)
+            if simArgs.outputImage[-3:] == 'png':
+                filename = simArgs.outputImage[:-4] + '_step_' + (macrostep.__str__() + '.png')
+            elif simArgs.outputImage[-3:] == 'jpg':
+                filename = simArgs.outputImage[:-4] + '_step_' + (macrostep.__str__() + '.png')
+            elif simArgs.outputImage[-4:] == 'jpeg':
+                filename = simArgs.outputImage[:-5] + '_step_' + (macrostep.__str__() + '.png')
+            else:
+                filename = simArgs.outputImage + '_step_' + (macrostep.__str__() + '.png')
+            saveLattice(latticeSize, lattice, imgFile=filename)
 
         if outputAnimationCheck:
             if simArgs.outputAnimation[:-3] != 'gif':
@@ -161,13 +117,15 @@ def isingSimulation(lattice, numSteps,latticeSize, beta):
             else:
                 animFile = simArgs.outputAnimation
 
+    end = time.perf_counter()
+    print(f"Simulation time: {end - start} seconds")
     ani = FuncAnimation(fig, update, frames=frames, interval=200, blit=True)
     ani.save(animFile)
     plt.show()
-    end = time.perf_counter()
+
     
     
-    print(f"Simulation time: {end - start} seconds")
+    
 
 
 
